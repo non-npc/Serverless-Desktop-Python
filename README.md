@@ -4,16 +4,13 @@ A serverless desktop python demo for games and apps
 
 ## Screenshot
 
-![Live Code Previewer Screenshot-01](screenshot-01.png)
-![Live Code Previewer Screenshot-02](screenshot-02.png)
+![Serverless Desktop Python Screenshot](screenshot01.png)
 
 ## Features
 
-- **Python/JS Bridge**: Communication bridge for Python->JS and JS->Python.
+- **Python/JS Bridge**: Communication bridge for Python->JS and JS->Python with 4 examples.
 - **External Methods Example**: An example of using python code in a JSON file.
-- **Manual Update Option**: You can disable live updating by unchecking the "Toggle Live Updating" checkbox. In this mode, the webview is updated only when you click the "Load in Webview" button.
-- **HTML, CSS, and JavaScript Support**: You can input not just HTML, but also include CSS and JavaScript directly in the text area for live rendering.
-- **Local File Support**: Local images/scripts/etc work relative to the app folder or using absolute paths (see "Local File Support" below for details).
+
 
 ## Installation
 
