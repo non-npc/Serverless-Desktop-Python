@@ -1,0 +1,5 @@
+This is a placeholder file for the images directory.
+In a real application, you would place image files (PNG, JPG, SVG, etc.) in this directory.
+
+Example usage in HTML:
+<img src="assets/images/logo.png" alt="Logo"> 

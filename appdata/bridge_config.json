@@ -1,0 +1,32 @@
+{
+  "functions": [
+    {
+      "name": "process_message",
+      "description": "Process a message from JavaScript and return a response",
+      "parameters": ["message"],
+      "return_type": "str",
+      "code": "from PyQt6.QtWidgets import QApplication; import numpy as np; exit_app = message == 'EXIT_APPLICATION'; print('Exiting application...' if exit_app else f'Received message from JavaScript: {message}'); QApplication.instance().quit() if exit_app else None; return 'Exiting...' if exit_app else f\"Python received: '{message}'. Here's a random number: {np.random.randint(1, 100)}\""
+    },
+    {
+      "name": "show_dialog",
+      "description": "Show a dialog window with the given title and message",
+      "parameters": ["title", "message"],
+      "return_type": "bool",
+      "code": "print(f\"Showing dialog: {title} - {message}\"); from PyQt6.QtWidgets import QMessageBox; QMessageBox.information(self.main_window, title, message); return True"
+    },
+    {
+      "name": "get_system_info",
+      "description": "Get basic system information",
+      "parameters": [],
+      "return_type": "str",
+      "code": "import platform; return f\"OS: {platform.system()} {platform.release()}, Python: {platform.python_version()}\""
+    },
+    {
+      "name": "exit_application",
+      "description": "Exit the application",
+      "parameters": [],
+      "return_type": "bool",
+      "code": "print(\"Exiting application...\"); import sys; from PyQt6.QtWidgets import QApplication; QApplication.instance().quit(); return True"
+    }
+  ]
+} 

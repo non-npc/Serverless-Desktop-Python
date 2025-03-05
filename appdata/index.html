@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyQt6 WebView App</title>
+    <link rel="stylesheet" href="assets/styles.css">
+    <!-- Include the QWebChannel script -->
+    <script src="qwebchannel.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>PyQt6 WebView with QtChannel</h1>
+        <p>This is a basic example of using PyQt6 WebView with QtChannel for Python/JS communication.</p>
+        
+        <button id="callPythonBtn">Call Python Function</button>
+        <button id="showDialogBtn">Show Python Dialog</button>
+        <button id="getSystemInfoBtn">Get System Info</button>
+        <button id="exitAppBtn">Exit Application</button>
+        <div id="response">Response will appear here...</div>
+    </div>
+
+    <script src="assets/app.js"></script>
+</body>
+</html> 

@@ -1,0 +1,10 @@
+This is a placeholder file for the fonts directory.
+In a real application, you would place font files (TTF, WOFF, WOFF2, etc.) in this directory.
+
+Example usage in CSS:
+@font-face {
+    font-family: 'CustomFont';
+    src: url('assets/fonts/custom-font.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+} 
