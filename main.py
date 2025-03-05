@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
     
     def init_ui(self):
         # Set window properties
-        self.setWindowTitle("PyQt6 WebView Application")
+        self.setWindowTitle("Serverless Desktop Python v0.1")
         self.setFixedSize(1280, 720)
         
         # Center the window on the screen
