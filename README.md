@@ -47,5 +47,5 @@ Contributions are welcome! If you'd like to contribute to the project, feel free
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the CC0 License. See the [LICENSE](LICENSE) file for more details.
 
