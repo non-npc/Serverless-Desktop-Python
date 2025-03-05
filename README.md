@@ -18,6 +18,7 @@ You can install the dependencies using pip:
 
 \`\`\`
 pip install PyQt6 PyQtWebEngine
+
 pip install numpy
 \`\`\`
 
