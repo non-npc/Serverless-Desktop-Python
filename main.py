@@ -10,57 +10,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtGui import QIcon
 import types
-
-
-class DynamicMethod(QObject):
-    """A wrapper class for dynamic methods that can be exposed to JavaScript"""
-    
-    def __init__(self, code, parent=None):
-        super().__init__(parent)
-        self.code = code
-        self.parent = parent
-    
-    @pyqtSlot(str, result=str)
-    def process_message(self, message):
-        """Process a message from JavaScript and return a response"""
-        try:
-            # Create a local namespace with access to self and parameters
-            local_vars = {'self': self.parent, 'message': message}
-            # Execute the code in this context
-            exec(f"result = {self.code}", globals(), local_vars)
-            # Return the result
-            return local_vars.get('result', '')
-        except Exception as e:
-            print(f"Error executing process_message: {e}")
-            return f"Error: {str(e)}"
-    
-    @pyqtSlot(str, str, result=bool)
-    def show_dialog(self, title, message):
-        """Show a dialog window with the given title and message"""
-        try:
-            # Create a local namespace with access to self and parameters
-            local_vars = {'self': self.parent, 'title': title, 'message': message}
-            # Execute the code in this context
-            exec(f"result = {self.code}", globals(), local_vars)
-            # Return the result
-            return local_vars.get('result', False)
-        except Exception as e:
-            print(f"Error executing show_dialog: {e}")
-            return False
-    
-    @pyqtSlot(result=str)
-    def get_system_info(self):
-        """Get system information"""
-        try:
-            # Create a local namespace with access to self
-            local_vars = {'self': self.parent}
-            # Execute the code in this context
-            exec(f"result = {self.code}", globals(), local_vars)
-            # Return the result
-            return local_vars.get('result', '')
-        except Exception as e:
-            print(f"Error executing get_system_info: {e}")
-            return f"Error: {str(e)}"
+import importlib
 
 
 class DynamicPyBridge(QObject):
@@ -70,36 +20,63 @@ class DynamicPyBridge(QObject):
         super().__init__(parent)
         self.main_window = parent
         self.functions = {}
-        # We'll load the config later when the loading dialog is shown
         self.config_path = config_path
+        self.handler = None
+        self.json_config = None
     
     def load_config_with_progress(self, progress_dialog):
         """Load the bridge functions from the JSON configuration file with progress updates"""
         try:
+            # First, load the JSON configuration
             with open(self.config_path, 'r') as f:
-                config = json.load(f)
+                self.json_config = json.load(f)
             
-            functions = config.get('functions', [])
+            functions = self.json_config.get('functions', [])
             total_functions = len(functions)
             
             if total_functions == 0:
                 progress_dialog.setValue(100)
                 return
             
+            # Store the functions for reference
             for i, func in enumerate(functions):
                 # Update progress dialog
                 name = func['name']
                 progress_dialog.setLabelText(f"Loading function: {name}")
-                progress_percent = int((i / total_functions) * 100)
+                progress_percent = int((i / total_functions) * 50)  # First half of progress
                 progress_dialog.setValue(progress_percent)
                 
-                # Process the function
+                # Store the function code
                 code = func.get('code', 'return None')
                 self.functions[name] = code
                 
                 # Add a small delay to make the progress visible
                 QApplication.processEvents()
-                time.sleep(0.3)  # Simulate loading time
+                time.sleep(0.1)  # Simulate loading time
+            
+            # Now generate the temp.py file with the PyHandler class
+            progress_dialog.setLabelText("Generating PyHandler class...")
+            progress_dialog.setValue(60)
+            QApplication.processEvents()
+            
+            self._generate_temp_py_file()
+            
+            # Import or reload the temp module
+            progress_dialog.setLabelText("Loading PyHandler module...")
+            progress_dialog.setValue(80)
+            QApplication.processEvents()
+            
+            if "temp" in sys.modules:
+                importlib.reload(sys.modules["temp"])
+            else:
+                import temp
+            
+            # Create an instance of the PyHandler class
+            progress_dialog.setLabelText("Creating PyHandler instance...")
+            progress_dialog.setValue(90)
+            QApplication.processEvents()
+            
+            self.handler = sys.modules["temp"].create_handler(self.main_window, self)
             
             # Set to 100% when done
             progress_dialog.setValue(100)
@@ -108,59 +85,116 @@ class DynamicPyBridge(QObject):
             print(f"Error loading configuration: {e}")
             progress_dialog.cancel()
     
-    def _execute_function(self, func_name, local_vars=None):
-        """Execute a function from the configuration"""
-        if local_vars is None:
-            local_vars = {}
+    def _generate_temp_py_file(self):
+        """Generate the temp.py file with the PyHandler class based on the JSON configuration"""
+        if not self.json_config:
+            print("No JSON configuration loaded")
+            return
         
-        # Add self to the local variables
-        local_vars['self'] = self
-        
-        if func_name in self.functions:
-            try:
-                # Create a wrapper function to execute the code
-                exec_code = f"""
-def _temp_func({', '.join(local_vars.keys())}):
-    {self.functions[func_name]}
-result = _temp_func({', '.join(local_vars.keys())})
+        # Start building the PyHandler class
+        py_handler_code = """from PyQt6.QtCore import QObject, pyqtSlot
+import importlib
+import sys
+import numpy as np
+from PyQt6.QtWidgets import QApplication, QMessageBox
+
+class PyHandler(QObject):
+    \"\"\"
+    A QObject-derived class that exposes Python methods to JavaScript via QWebChannel.
+    Methods are dynamically added based on the JSON configuration.
+    \"\"\"
+    
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(parent)
+        self.main_window = main_window
 """
-                # Execute the code in this context
-                exec(exec_code, globals(), local_vars)
-                # Return the result
-                return local_vars.get('result')
-            except Exception as e:
-                print(f"Error executing {func_name}: {e}")
-                return None
-        return None
+        
+        # Add each function from the JSON to the PyHandler class
+        for func in self.json_config.get('functions', []):
+            name = func['name']
+            code = func.get('code', 'return None')
+            parameters = func.get('parameters', [])
+            return_type = func.get('return_type', 'str')
+            
+            # Create the method with the appropriate pyqtSlot decorator
+            # Ensure proper syntax for the pyqtSlot decorator
+            param_types = []
+            for _ in parameters:
+                param_types.append('str')  # Default to str for all parameters
+            
+            # Create the decorator with proper syntax
+            if param_types:
+                decorator = f"@pyqtSlot({', '.join(param_types)}, result={return_type})"
+            else:
+                decorator = f"@pyqtSlot(result={return_type})"
+            
+            # Debug: Print the function details
+            print(f"Generating method: {name}, Parameters: {parameters}, Return type: {return_type}")
+            print(f"Decorator: {decorator}")
+            
+            # Ensure the code is properly indented and doesn't contain syntax errors
+            # Split the code into lines and indent each line
+            code_lines = code.split(';')
+            indented_code = []
+            for line in code_lines:
+                line = line.strip()
+                if line:
+                    indented_code.append(f"            {line}")
+            
+            # Join the lines with newlines for better readability
+            indented_code_str = '\n'.join(indented_code)
+            
+            method_code = f"""
+    {decorator}
+    def {name}({', '.join(['self'] + parameters)}):
+        \"\"\"
+        {func.get('description', f'Implementation of {name}')}
+        \"\"\"
+        try:
+{indented_code_str}
+        except Exception as e:
+            print(f"Error executing {name}: {{e}}")
+            return {'""' if return_type == 'str' else 'False' if return_type == 'bool' else 'None'}
+"""
+            py_handler_code += method_code
+        
+        # Add the create_handler function
+        py_handler_code += """
+
+def create_handler(main_window=None, parent=None):
+    \"\"\"
+    Create and return an instance of the PyHandler class.
+    This function is called from main.py to get the handler instance.
+    \"\"\"
+    return PyHandler(main_window, parent)
+"""
+        
+        # Write the PyHandler class to temp.py
+        with open("temp.py", "w") as f:
+            f.write(py_handler_code)
+        
+        # Debug: Print the generated file
+        print("Generated temp.py with PyHandler class")
+        try:
+            # Try to compile the generated code to check for syntax errors
+            with open("temp.py", "r") as f:
+                source = f.read()
+            compile(source, "temp.py", "exec")
+            print("Compilation successful: No syntax errors in generated code")
+        except SyntaxError as e:
+            print(f"Compilation failed: Syntax error in generated code: {e}")
+            # Print the problematic line
+            lines = source.split('\n')
+            if e.lineno <= len(lines):
+                print(f"Line {e.lineno}: {lines[e.lineno-1]}")
     
-    @pyqtSlot(str, result=str)
-    def process_message(self, message):
-        """Process a message from JavaScript and return a response"""
-        result = self._execute_function('process_message', {'message': message, 'np': np})
-        if result is not None:
-            return result
-        return "Function not found or error occurred"
-    
-    @pyqtSlot(str, str, result=bool)
-    def show_dialog(self, title, message):
-        """Show a dialog window with the given title and message"""
-        result = self._execute_function('show_dialog', {
-            'title': title, 
-            'message': message, 
-            'QMessageBox': QMessageBox,
-            'main_window': self.main_window
-        })
-        if result is not None:
-            return bool(result)
-        return False
-    
-    @pyqtSlot(result=str)
-    def get_system_info(self):
-        """Get system information"""
-        result = self._execute_function('get_system_info', {'platform': __import__('platform')})
-        if result is not None:
-            return result
-        return "Function not found or error occurred"
+    def get_handler(self):
+        """Get the PyHandler instance"""
+        if self.handler is None:
+            # If handler is not created yet, we need to load the configuration first
+            print("Handler not initialized. Please load the configuration first.")
+            return None
+        return self.handler
 
 
 class MainWindow(QMainWindow):
@@ -196,8 +230,14 @@ class MainWindow(QMainWindow):
         # Show loading dialog and load the configuration
         self.show_loading_dialog()
         
-        # Register the bridge with the channel
-        self.channel.registerObject("handler", self.bridge)
+        # Register the PyHandler instance directly with the channel
+        # This allows JavaScript to access the PyHandler methods directly
+        handler = self.bridge.get_handler()
+        if handler:
+            self.channel.registerObject("pythonHandler", handler)
+        else:
+            print("Warning: No handler available to register with QWebChannel")
+        
         self.web_view.page().setWebChannel(self.channel)
         
         # Load the HTML file

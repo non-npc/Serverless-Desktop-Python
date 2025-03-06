@@ -9,11 +9,16 @@ function onQWebChannelReady() {
     if (typeof QWebChannel !== "undefined") {
         new QWebChannel(qt.webChannelTransport, function(channel) {
             // Get the Python handler object that was exposed
-            pythonHandler = channel.objects.handler;
-            console.log("QWebChannel initialized successfully");
+            pythonHandler = channel.objects.pythonHandler;
             
-            // Now we can set up event listeners that use the Python handler
-            setupEventListeners();
+            if (pythonHandler) {
+                console.log("QWebChannel initialized successfully with pythonHandler");
+                // Now we can set up event listeners that use the Python handler
+                setupEventListeners();
+            } else {
+                console.error("pythonHandler not available in QWebChannel");
+                document.getElementById("response").textContent = "Error: Python handler not available. Please restart the application.";
+            }
         });
     } else {
         console.error("QWebChannel not available");
@@ -42,6 +47,7 @@ function setupEventListeners() {
 // Call a Python function via the bridge
 function callPythonFunction(message) {
     if (pythonHandler) {
+        // Direct call to the process_message method
         pythonHandler.process_message(message, function(result) {
             document.getElementById("response").textContent = result;
         });
@@ -54,6 +60,7 @@ function callPythonFunction(message) {
 // Show a Python dialog via the bridge
 function showPythonDialog(title, message) {
     if (pythonHandler) {
+        // Direct call to the show_dialog method
         pythonHandler.show_dialog(title, message, function(result) {
             if (result) {
                 document.getElementById("response").textContent = "Dialog shown successfully";
@@ -70,6 +77,7 @@ function showPythonDialog(title, message) {
 // Get system information via the bridge
 function getSystemInfo() {
     if (pythonHandler) {
+        // Direct call to the get_system_info method
         pythonHandler.get_system_info(function(result) {
             document.getElementById("response").textContent = "System Info: " + result;
         });
@@ -83,11 +91,17 @@ function getSystemInfo() {
 function exitApplication() {
     if (pythonHandler) {
         document.getElementById("response").textContent = "Exiting application...";
-        // Use process_message to send an exit command
-        pythonHandler.process_message("EXIT_APPLICATION", function(result) {
-            // This callback might not be called if the application exits immediately
-            console.log("Exit result:", result);
-        });
+        // Use exit_application method if available, otherwise fall back to process_message
+        if (typeof pythonHandler.exit_application === 'function') {
+            pythonHandler.exit_application(function(result) {
+                console.log("Exit result:", result);
+            });
+        } else {
+            // Fallback to process_message
+            pythonHandler.process_message("EXIT_APPLICATION", function(result) {
+                console.log("Exit result:", result);
+            });
+        }
     } else {
         console.error("Python handler not available");
         document.getElementById("response").textContent = "Error: Python handler not available";
