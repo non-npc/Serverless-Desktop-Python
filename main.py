@@ -11,6 +11,7 @@ from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtGui import QIcon
 import types
 import importlib
+import atexit
 
 
 class DynamicPyBridge(QObject):
@@ -203,6 +204,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        # Register cleanup function to be called on exit
+        atexit.register(self.cleanup)
     
     def init_ui(self):
         # Set window properties
@@ -273,6 +276,17 @@ class MainWindow(QMainWindow):
             print("Page loaded successfully")
         else:
             print("Failed to load the page")
+    
+    def cleanup(self):
+        """Clean up resources before exiting"""
+        print("Cleaning up before exit...")
+        # Clear the temp.py file
+        try:
+            with open("temp.py", "w") as f:
+                f.write("# This file was cleared on application exit\n")
+            print("temp.py file cleared")
+        except Exception as e:
+            print(f"Error clearing temp.py: {e}")
 
 
 def main():
