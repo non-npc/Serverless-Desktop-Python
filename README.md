@@ -39,6 +39,7 @@ pip install numpy
 ## NOTES
 This project uses the python bridge methods in an external JSON file.
 This is so that you can distribute the compiled EXE and JSON file together without having to modify the compiled EXE, each time you want to make a change to the config or a method based on changes in your HTMl/JS.
+You do not need to store methods externally, this was simply a creative excercise.
 
 
 ## Contributing
